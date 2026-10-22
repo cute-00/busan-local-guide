@@ -1,126 +1,96 @@
 #!/usr/bin/env python3
-"""Create a weekly editorial review draft for Busan Local Guide.
+"""Curated travel itinerary *review drafts* for Taiwan & Japan readers.
 
-No API keys or unverified claims are required. These are review templates,
-NOT verified visitor guidance and NOT ready for automatic publication.
+Runs weekly via GitHub Actions. No scraping, paid APIs or automatic publishing.
+The draft is not fact-checked against live venue hours or ticket availability.
 """
-from __future__ import annotations
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import sys
 
 KST = timezone(timedelta(hours=9))
-date = datetime.now(KST).date()
-topics = [
+today = datetime.now(KST).date()
+
+subjects = [
     {
-        "slug": "gamcheon-culture-village",
-        "en": "Gamcheon Culture Village: visiting respectfully",
-        "zh": "甘川文化村：尊重居民的旅行方式",
-        "angle_en": "Walkable route, slopes and steps, local history, quiet photo etiquette",
-        "angle_zh": "步行路線、坡道與階梯、在地歷史、拍照禮儀",
-        "sources": ["https://www.visitbusan.net/"]
+        "slug": "2day-nampo-haeundae",
+        "duration": "1 night / 2 days",
+        "zh_title": "釜山2天1夜：南浦洞市場＋海雲臺海岸",
+        "ja_title": "釜山1泊2日：南浦洞の市場＋海雲台の海",
+        "areas": "Day 1: Gamcheon → 1969 Buwondong Kalguksu → Jagalchi/BIFF → ChoPilsal Nampo; Day 2: Haeundae → Blueline Park → Doheenae Cheongsapo"
     },
     {
-        "slug": "haeundae-blueline-park",
-        "en": "Haeundae Blueline Park: Beach Train vs. Sky Capsule",
-        "zh": "海雲臺藍線公園：海岸列車與天空膠囊比較",
-        "angle_en": "Routes, ticket types, current operating calendar, official booking",
-        "angle_zh": "路線、票種、最新營運日程、官方預訂",
-        "sources": ["https://www.bluelinepark.com/", "https://www.visitbusan.net/"]
+        "slug": "3day-market-sea-village",
+        "duration": "2 nights / 3 days",
+        "zh_title": "釜山3天2夜：市場、海景、文化村",
+        "ja_title": "釜山2泊3日：市場・海・文化村",
+        "areas": "Day 1: Nampo, Jagalchi, ChoPilsal BBQ; Day 2: Haeundae, Blueline, Doheenae, Geumsubokguk, Gwangalli; Day 3: Gamcheon, Kalguksu, optional Huinnyeoul"
     },
     {
-        "slug": "nampo-market-walk",
-        "en": "Nampo-dong market walk: first-timer tips",
-        "zh": "南浦洞市場散步：新手旅行實用提示",
-        "angle_en": "Walking route between BIFF Square and nearby markets; transit and opening-hour checks",
-        "angle_zh": "BIFF廣場與周邊市場步行路線、交通和營業時間確認",
-        "sources": ["https://www.visitbusan.net/"]
+        "slug": "seafood-busan-coast",
+        "duration": "1 night / 2 days",
+        "zh_title": "釜山海景美食2天1夜：青沙浦與海雲臺",
+        "ja_title": "釜山の海と海鮮を楽しむ1泊2日",
+        "areas": "Day 1: Haeundae and Mipo; Day 2: Blueline/Cheongsapo and seafood lunch; choose Nampo only when departure transport allows"
     },
     {
-        "slug": "busan-rainy-day",
-        "en": "Busan rainy-day itinerary ideas",
-        "zh": "釜山雨天備案行程",
-        "angle_en": "Indoor alternatives and transport options; weather-dependent and seasonal details",
-        "angle_zh": "室內備案和大眾運輸選項；確認季節與天氣資訊",
-        "sources": ["https://www.visitbusan.net/"]
-    },
-    {
-        "slug": "busan-family-transport",
-        "en": "Busan transport with kids: planning checklist",
-        "zh": "帶孩子玩釜山：交通規劃清單",
-        "angle_en": "Subway and bus basics, stroller practicality, rest stops",
-        "angle_zh": "地鐵與公車、嬰兒車實用性、休息站安排",
-        "sources": ["https://www.visitbusan.net/"]
-    },
-    {
-        "slug": "songdo-coast",
-        "en": "Songdo coast: a flexible day trip outline",
-        "zh": "松島海岸：彈性一日遊提案",
-        "angle_en": "Public transportation, scenic stops, checking conditions and ticket prices",
-        "angle_zh": "大眾運輸、觀景景點、票價與現場狀況確認",
-        "sources": ["https://www.visitbusan.net/"]
+        "slug": "slow-pace-busan",
+        "duration": "2 nights / 3 days",
+        "zh_title": "慢遊釜山3天2夜：少換車的在地路線",
+        "ja_title": "ゆったり釜山2泊3日：移動を減らす旅",
+        "areas": "Day 1: Gamcheon + Nampo; Day 2: Haeundae + Cheongsapo + meal; Day 3: optional Yeongdo or leisure, then departure"
     }
 ]
-year, week, weekday = date.isocalendar()
-topic = topics[(week - 1) % len(topics)]
-folder = Path(__file__).resolve().parents[1] / "drafts"
-folder.mkdir(parents=True, exist_ok=True)
-path = folder / f"{date.isoformat()}-{topic['slug']}.md"
-if path.exists():
-    print(f"Already exists: {path.name}")
-    sys.exit(0)
-sources = "\n".join(f"- {url}" for url in topic["sources"])
-content = f"""---
+week = today.isocalendar().week
+subject = subjects[(week - 1) % len(subjects)]
+base = Path(__file__).resolve().parents[1]
+out = base / "drafts" / (today.isoformat() + "-" + subject["slug"] + ".md")
+out.parent.mkdir(parents=True, exist_ok=True)
+if out.exists():
+    print("Draft already exists:", out.name)
+    raise SystemExit(0)
+
+draft = """---
 status: NEEDS_HUMAN_REVIEW
-date: {date.isoformat()}
-topic: {topic['slug']}
-languages: [en, zh-Hant]
+languages: [zh-Hant, ja]
+duration: {duration}
+date: {date}
 ---
 
-# WEEKLY EDITORIAL DRAFT — NOT FOR PUBLICATION
+# Weekly Taiwan + Japan Busan itinerary brief
+## Taiwan / 繁體中文
+**{zh_title}**
 
-This is a topic and bilingual editorial outline, NOT an AI-written or independently
-fact-checked article. No posting to the public website occurs from this file.
-Add first-hand experience and/or licensed original photos before publishing.
+- Write a factual, original itinerary introduction in Traditional Chinese.
+- Provide a day-by-day schedule with time slots, Korean attraction names and map links.
+- Explain the logic of the route, local food choices, and transit considerations.
 
-## English title
-{topic['en']}
+## Japan / 日本語
+**{ja_title}**
 
-### Editorial brief
-{topic['angle_en']}
+- 日本人旅行者向けに、自然な日本語で観光スケジュールを執筆してください。
+- 各日の時刻、立ち寄る飲食店の韓国語名称、地図リンクを必ず付けてください。
+- 移動負担・食事時間・帰国便までの余裕を考慮してください。
 
-### Article outline (fill in after source review)
-- Hook: who should visit, what problem this helps solve
-- Practical itinerary or decision comparison
-- Current directions and transport, checked against official source
-- Accessibility, child-friendliness and on-site etiquette where relevant
-- Last verified date and original photo credits
-- Clear disclosure of any affiliate links (only after approval)
+## Suggested locations (editorial outline only)
+{areas}
 
-## 繁體中文標題
-{topic['zh']}
+## Human checks required before publishing
+- [ ] Confirm each restaurant still operates and verify day-specific opening hours
+- [ ] Confirm each venue's opening details and local transport connections
+- [ ] Check coastal train/Sky Capsule inventory and ticket routes; do not invent reservations
+- [ ] Verify suitable walking times against a real route planner
+- [ ] Review Taiwan Traditional Chinese and Japanese translations
+- [ ] Add original or appropriately licensed photos and clear credits
+- [ ] Disclose affiliate commissions only if an approved affiliate account exists
+- [ ] Obtain human editor approval and manually add content to published pages
 
-### 編輯重點
-{topic['angle_zh']}
+## Official reference sites
+- Busan City Tourism: https://www.visitbusan.net/
+- Haeundae Blueline Park: https://www.bluelinepark.com/
+- Gamcheon Culture Village: https://www.gamcheon.or.kr/
 
-### 文章架構（核對來源後填寫）
-- 文章開頭：適合哪些旅客，解決什麼問題
-- 景點與交通路線、時間安排
-- 官方票價、訂票與營業資訊（請再次核對）
-- 行動不便者及親子旅遊提醒
-- 最後查證日期、照片著作權
-- 分潤連結揭露（聯盟計畫獲准後才使用）
+This file is an editorial brief, NOT a published article or independently verified restaurant schedule.
+""".format(duration=subject["duration"], date=today.isoformat(), zh_title=subject["zh_title"], ja_title=subject["ja_title"], areas=subject["areas"])
 
-## Official sources for verification
-{sources}
-
-## Before publishing
-- [ ] Verify times, prices, route and closures with official sources
-- [ ] Review English and Traditional Chinese phrasing
-- [ ] Add unique observations and self-shot/licensed visuals
-- [ ] Remove unsourced details and add source links
-- [ ] Verify any affiliate account and the disclosure
-- [ ] Approve manually before publishing
-"""
-path.write_text(content, encoding="utf-8")
-print(f"Created editorial review draft: {path.relative_to(folder.parent)}")
+out.write_text(draft, encoding="utf-8")
+print("Created review draft:", out.relative_to(base))
