@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'itineraries/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 permissions:
@@ -28,6 +29,8 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/index.html
+          mkdir -p site/itineraries
+          cp itineraries/*.html site/itineraries/
           touch site/.nojekyll
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
